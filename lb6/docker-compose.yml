@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  graphql-server:
+    image: profiles-graphql:latest
+    container_name: profiles-graphql-server
+    ports:
+      - "8145:8145"
+    networks:
+      - profiles-network
+
+  graphql-client:
+    build: .
+    container_name: profiles-graphql-client
+    depends_on:
+      - graphql-server
+    environment:
+      - SERVER_URL=http://graphql-server:8145
+    networks:
+      - profiles-network
+    command: ["python", "main.py"]
+
+networks:
+  profiles-network:
+    driver: bridge
