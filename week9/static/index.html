@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC P2P Chat - Week 9</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        #chat { width: 500px; height: 300px; border: 1px solid #ccc; overflow-y: auto; margin-bottom: 10px; padding: 10px; }
+        #messageInput { width: 400px; }
+        button { margin-left: 10px; }
+        .status { color: gray; margin-bottom: 10px; }
+        .remote { color: blue; }
+        .local { color: green; }
+    </style>
+</head>
+<body>
+    <h2>WebRTC P2P Chat (Week 9)</h2>
+    <div>Room: <input id="room" value="331-s04" placeholder="room"></div>
+    <button id="connectBtn">Connect & Start P2P</button>
+    <div id="status" class="status">Disconnected</div>
+    <div id="chat" style="display: none;"></div>
+    <div id="controls" style="display: none;">
+        <input id="messageInput" type="text" placeholder="Type a message...">
+        <button id="sendBtn">Send via P2P</button>
+    </div>
+
+    <script>
+        const configuration = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+        let peerConnection = null;
+        let dataChannel = null;
+        let ws = null;
+        let isInitiator = false;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const roomInput = document.getElementById('room');
+        const statusDiv = document.getElementById('status');
+        const chatDiv = document.getElementById('chat');
+        const controlsDiv = document.getElementById('controls');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function addMessage(text, isLocal = true) {
+            const msg = document.createElement('div');
+            msg.className = isLocal ? 'local' : 'remote';
+            msg.textContent = (isLocal ? 'You: ' : 'Peer: ') + text;
+            chatDiv.appendChild(msg);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        function setupDataChannel() {
+            if (dataChannel) return;
+            dataChannel = peerConnection.createDataChannel("chat");
+            dataChannel.onopen = () => {
+                statusDiv.textContent = "✅ P2P connected! (Data channel open)";
+                chatDiv.style.display = 'block';
+                controlsDiv.style.display = 'block';
+                addMessage("P2P connection established! Type something.", true);
+            };
+            dataChannel.onmessage = (event) => addMessage(event.data, false);
+            dataChannel.onclose = () => statusDiv.textContent = "P2P channel closed";
+        }
+
+        async function createOffer() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            ws.send(JSON.stringify({ type: "offer", offer: offer, room: roomInput.value }));
+            isInitiator = true;
+        }
+
+        connectBtn.onclick = async () => {
+            const room = roomInput.value;
+            if (!room) return;
+            // Connect WebSocket
+            ws = new WebSocket(`ws://localhost:8765`);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "join", room: room }));
+                statusDiv.textContent = "Connected to signaling server. Waiting for peer...";
+            };
+            ws.onmessage = async (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === "offer") {
+                    if (!peerConnection) {
+                        peerConnection = new RTCPeerConnection(configuration);
+                        peerConnection.ondatachannel = (event) => {
+                            dataChannel = event.channel;
+                            dataChannel.onopen = () => {
+                                statusDiv.textContent = "✅ P2P connected!";
+                                chatDiv.style.display = 'block';
+                                controlsDiv.style.display = 'block';
+                            };
+                            dataChannel.onmessage = (e) => addMessage(e.data, false);
+                        };
+                        peerConnection.onicecandidate = (event) => {
+                            if (event.candidate) {
+                                ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate, room: room }));
+                            }
+                        };
+                    }
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    ws.send(JSON.stringify({ type: "answer", answer: answer, room: room }));
+                } else if (data.type === "answer") {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                } else if (data.type === "candidate") {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } else if (data.type === "ready" && !peerConnection) {
+                    // Create peer as initiator
+                    peerConnection = new RTCPeerConnection(configuration);
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate, room: room }));
+                        }
+                    };
+                    setupDataChannel();
+                    createOffer();
+                }
+            };
+        };
+
+        sendBtn.onclick = () => {
+            const msg = messageInput.value.trim();
+            if (msg && dataChannel && dataChannel.readyState === "open") {
+                dataChannel.send(msg);
+                addMessage(msg, true);
+                messageInput.value = "";
+            } else {
+                statusDiv.textContent = "P2P not ready yet!";
+            }
+        };
+    </script>
+</body>
+</html>

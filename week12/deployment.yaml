@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profiles-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: profiles-app
+  template:
+    metadata:
+      labels:
+        app: profiles-app
+    spec:
+      containers:
+      - name: profiles-container
+        image: profiles-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8105
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8105
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8105
+          initialDelaySeconds: 5
+          periodSeconds: 5
