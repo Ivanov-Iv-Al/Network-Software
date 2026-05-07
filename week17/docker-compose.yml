@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -10,40 +8,33 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d tasks"]
       interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
 
   task-service:
     build: ./task-service
-    ports:
-      - "50051:50051"
     environment:
       DB_HOST: postgres
       DB_PASSWORD: secret
-      NOTIFY_SERVICE_URL: notification-service:50052
+      DB_NAME: tasks
+      DB_USER: admin
     depends_on:
       postgres:
         condition: service_healthy
-
-  notification-service:
-    build: ./notification-service
-    ports:
-      - "50052:50052"
-    environment:
-      REDIS_URL: redis:6379
 
   api-gateway:
     build: ./api-gateway
     ports:
       - "8080:8080"
     environment:
-      TASK_SERVICE_URL: task-service:50051
+      TASK_SERVICE_URL: http://task-service:5000
       JWT_SECRET: super-secret-key
     depends_on:
       - task-service
