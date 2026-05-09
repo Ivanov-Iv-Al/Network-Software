@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package ticketsservice;
+
+service TicketsService {
+    rpc GetTicketPrice (TicketRequest) returns (TicketResponse);
+}
+
+message TicketRequest {
+    string ticket_id = 1;
+    string user_id = 2;
+}
+
+message TicketResponse {
+    string ticket_id = 1;
+    double price = 2;
+    string currency = 3;
+    string event_name = 4;
+    string message = 5;
+}
