@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package notify;
+
+service NotifyService {
+    rpc SendNotification (TaskUpdate) returns (NotificationResponse);
+}
+
+message TaskUpdate {
+    int32 task_id = 1;
+    string title = 2;
+    string old_status = 3;
+    string new_status = 4;
+    string user_email = 5;
+}
+
+message NotificationResponse {
+    bool success = 1;
+    string message = 2;
+    string notification_id = 3;
+}
