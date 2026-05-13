@@ -1,17 +1,11 @@
-"""Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
 from . import notify_pb2 as notify__pb2
 
 class NotifyServiceStub(object):
-    """Сервис уведомлений
-    """
-    def __init__(self, channel):
-        """Constructor.
 
-        Args:
-            channel: A grpc.Channel.
-        """
+    def __init__(self, channel):
+
         self.SendNotification = channel.unary_unary(
                 '/notify.NotifyService/SendNotification',
                 request_serializer=notify__pb2.TaskUpdate.SerializeToString,
@@ -24,18 +18,15 @@ class NotifyServiceStub(object):
                 )
 
 class NotifyServiceServicer(object):
-    """Сервис уведомлений
-    """
+
     def SendNotification(self, request, context):
-        """Отправка уведомления об изменении задачи
-        """
+
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def StreamNotifications(self, request_iterator, context):
-        """Отправка потоковых уведомлений (для массовых операций)
-        """
+
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -57,7 +48,6 @@ def add_NotifyServiceServicer_to_server(servicer, server):
             'notify.NotifyService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
-# This mapping is used for reflection URI details
 _GRPC_GENERATED_SERVICE = {
     "notify.NotifyService": {
         "methods": ["SendNotification", "StreamNotifications"]
