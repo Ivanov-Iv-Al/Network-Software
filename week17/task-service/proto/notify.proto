@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package notify;
+
+service NotifyService {
+
+    rpc SendNotification (TaskUpdate) returns (NotificationResponse);
+    
+    rpc StreamNotifications (stream TaskUpdate) returns (stream NotificationResponse);
+}
+
+message TaskUpdate {
+    int32 task_id = 1;          // ID задачи
+    string title = 2;           // Название задачи
+    string old_status = 3;      // Старый статус
+    string new_status = 4;      // Новый статус
+    string user_email = 5;      // Email пользователя
+    int64 timestamp = 6;        // Время изменения (Unix timestamp)
+    map<string, string> metadata = 7;  // Дополнительные метаданные
+}
+
+message NotificationResponse {
+    bool success = 1;           // Успешность отправки
+    string message = 2;         // Текстовое сообщение
+    string notification_id = 3; // Уникальный ID уведомления
+    int64 sent_at = 4;          // Время отправки
+}
